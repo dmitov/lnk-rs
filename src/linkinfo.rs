@@ -3,7 +3,7 @@ use byteorder::{ByteOrder, LE};
 use num_derive::{FromPrimitive, ToPrimitive};
 use num_traits::FromPrimitive;
 
-use crate::strings;
+use crate::{Error, strings};
 
 /// The LinkInfo structure specifies information necessary to resolve a
 /// linktarget if it is not found in its original location. This includes
@@ -111,8 +111,9 @@ impl Default for LinkInfo {
     }
 }
 
-impl From<&[u8]> for LinkInfo {
-    fn from(data: &[u8]) -> Self {
+impl TryFrom<&[u8]> for LinkInfo {
+    type Error = Error;
+    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let mut link_info = Self::default();
 
         link_info.size = LE::read_u32(data);
@@ -130,39 +131,39 @@ impl From<&[u8]> for LinkInfo {
 
             if common_path_suffix_offset_unicode != 0 {
                 link_info.common_path_suffix_unicode = Some(strings::trim_nul_terminated_string(
-                    String::from_utf8_lossy(&data[common_path_suffix_offset_unicode..]).to_string(),
+                    String::from_utf8_lossy(data.get(common_path_suffix_offset_unicode..).ok_or(Error::CorruptFileError)?),
                 ));
             }
         }
         if flags & LinkInfoFlags::VOLUME_ID_AND_LOCAL_BASE_PATH
             == LinkInfoFlags::VOLUME_ID_AND_LOCAL_BASE_PATH
         {
-            assert_ne!(volume_id_offset, 0);
-            assert_ne!(local_base_path_offset, 0);
-            link_info.volume_id = Some(VolumeID::from(&data[volume_id_offset..]));
+            if volume_id_offset == 0 { return Err(Error::CorruptFileError) }
+            if local_base_path_offset == 0 { return Err(Error::CorruptFileError) }
+            link_info.volume_id = Some(VolumeID::try_from(data.get(volume_id_offset..).ok_or(Error::CorruptFileError)?)?);
             link_info.local_base_path = Some(strings::trim_nul_terminated_string(
-                String::from_utf8_lossy(&data[local_base_path_offset..]).to_string(),
+                String::from_utf8_lossy(data.get(local_base_path_offset..).ok_or(Error::CorruptFileError)?),
             ));
 
             if local_base_path_offset_unicode != 0 {
                 link_info.local_base_path_unicode = Some(strings::trim_nul_terminated_string(
-                    String::from_utf8_lossy(&data[local_base_path_offset_unicode..]).to_string(),
+                    String::from_utf8_lossy(data.get(local_base_path_offset_unicode..).ok_or(Error::CorruptFileError)?),
                 ));
             }
         }
         if flags & LinkInfoFlags::COMMON_NETWORK_RELATIVE_LINK_AND_PATH_SUFFIX
             == LinkInfoFlags::COMMON_NETWORK_RELATIVE_LINK_AND_PATH_SUFFIX
         {
-            assert_ne!(common_network_relative_link_offset, 0);
-            link_info.common_network_relative_link = Some(CommonNetworkRelativeLink::from(
-                &data[common_network_relative_link_offset..],
-            ));
+            if common_network_relative_link_offset == 0 { return Err(Error::CorruptFileError) }
+            link_info.common_network_relative_link = Some(CommonNetworkRelativeLink::try_from(
+                data.get(common_network_relative_link_offset..).ok_or(Error::CorruptFileError)?,
+            )?);
         }
         link_info.common_path_suffix = strings::trim_nul_terminated_string(
-            String::from_utf8_lossy(&data[common_path_suffix_offset..]).to_string(),
+            String::from_utf8_lossy(&data[common_path_suffix_offset..]),
         );
 
-        link_info
+        Ok(link_info)
     }
 }
 
@@ -240,8 +241,9 @@ impl Default for VolumeID {
     }
 }
 
-impl From<&[u8]> for VolumeID {
-    fn from(data: &[u8]) -> Self {
+impl TryFrom<&[u8]> for VolumeID {
+    type Error = Error;
+    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let mut volume_id = VolumeID::default();
 
         let _size = LE::read_u32(data);
@@ -252,10 +254,10 @@ impl From<&[u8]> for VolumeID {
             volume_label_offset /* _unicode */ = LE::read_u32(&data[16..]) as usize;
         }
         volume_id.volume_label = strings::trim_nul_terminated_string(
-            String::from_utf8_lossy(&data[volume_label_offset..]).to_string(),
+            String::from_utf8_lossy(data.get(volume_label_offset..).ok_or(Error::CorruptFileError)?),
         );
 
-        volume_id
+        Ok(volume_id)
     }
 }
 
@@ -328,12 +330,13 @@ impl Default for CommonNetworkRelativeLink {
     }
 }
 
-impl From<&[u8]> for CommonNetworkRelativeLink {
-    fn from(data: &[u8]) -> Self {
+impl TryFrom<&[u8]> for CommonNetworkRelativeLink {
+    type Error = Error;
+    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let mut link = CommonNetworkRelativeLink::default();
 
         let size = LE::read_u32(data);
-        assert!(size >= 0x14);
+        if size < 0x14 { return Err(Error::CorruptFileError) }
         link.flags = CommonNetworkRelativeLinkFlags::from_bits_truncate(LE::read_u32(&data[4..]));
         let net_name_offset = LE::read_u32(&data[8..]) as usize;
         let device_name_offset = LE::read_u32(&data[12..]) as usize;
@@ -343,23 +346,23 @@ impl From<&[u8]> for CommonNetworkRelativeLink {
             link.network_provider_type = NetworkProviderType::from_u32(LE::read_u32(&data[16..]));
         }
         link.net_name = strings::trim_nul_terminated_string(
-            String::from_utf8_lossy(&data[net_name_offset..]).to_string(),
+            String::from_utf8_lossy(data.get(net_name_offset..).ok_or(Error::CorruptFileError)?),
         );
         link.device_name = strings::trim_nul_terminated_string(
-            String::from_utf8_lossy(&data[device_name_offset..]).to_string(),
+            String::from_utf8_lossy(data.get(device_name_offset..).ok_or(Error::CorruptFileError)?),
         );
         if net_name_offset >= 0x14 {
             let net_name_offset_unicode = LE::read_u32(&data[20..]) as usize;
             let device_name_offset_unicode = LE::read_u32(&data[24..]) as usize;
             link.net_name_unicode = Some(strings::trim_nul_terminated_string(
-                String::from_utf8_lossy(&data[net_name_offset_unicode..]).to_string(),
+                String::from_utf8_lossy(data.get(net_name_offset_unicode..).ok_or(Error::CorruptFileError)?),
             ));
             link.device_name_unicode = Some(strings::trim_nul_terminated_string(
-                String::from_utf8_lossy(&data[device_name_offset_unicode..]).to_string(),
+                String::from_utf8_lossy(data.get(device_name_offset_unicode..).ok_or(Error::CorruptFileError)?),
             ));
         }
 
-        link
+        Ok(link)
     }
 }
 

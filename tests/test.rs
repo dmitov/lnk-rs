@@ -1,5 +1,6 @@
 const TEST_FILE_NAME: &'static str = "tests/test.lnk";
 const TEST_BLANK_FILE_NAME: &'static str = "tests/blank.txt";
+const TEST_CORRUPT_FILE_NAME: &'static str = "tests/corrupt-issue25.lnk";
 
 use chrono::NaiveDate;
 use lnk::*;
@@ -77,6 +78,16 @@ fn test_no_panic_reading_other_filetypes() {
     let _ = pretty_env_logger::try_init();
 
     let res = ShellLink::open(TEST_BLANK_FILE_NAME);
+    // Shouldn't have panicked by now!
+    assert!(res.is_err());
+}
+
+#[test]
+fn test_no_panic_reading_corrupt_lnk() {
+    // Test for issue #25: https://github.com/lilopkins/lnk-rs/issues/25
+    let _ = pretty_env_logger::try_init();
+
+    let res = ShellLink::open(TEST_CORRUPT_FILE_NAME);
     // Shouldn't have panicked by now!
     assert!(res.is_err());
 }

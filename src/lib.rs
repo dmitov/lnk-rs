@@ -82,6 +82,8 @@ pub enum Error {
     IoError(std::io::Error),
     /// The parsed file isn't a shell link.
     NotAShellLinkError,
+    /// The file could not be parsed.
+    CorruptFileError,
 }
 
 impl From<std::io::Error> for Error {
@@ -285,7 +287,7 @@ impl ShellLink {
         if link_flags.contains(LinkFlags::HAS_LINK_INFO) {
             debug!("LinkInfo is marked as present. Parsing now.");
             debug!("Cursor position: 0x{:x}", cursor);
-            let info = linkinfo::LinkInfo::from(&data[cursor..]);
+            let info = linkinfo::LinkInfo::try_from(&data[cursor..])?;
             debug!("{:?}", info);
             cursor += info.size as usize;
             link_info = Some(info);
