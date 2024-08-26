@@ -351,7 +351,7 @@ impl TryFrom<&[u8]> for CommonNetworkRelativeLink {
         link.device_name = strings::trim_nul_terminated_string(
             String::from_utf8_lossy(data.get(device_name_offset..).ok_or(Error::CorruptFileError)?),
         );
-        if net_name_offset >= 0x14 {
+        if net_name_offset > 0x14 {
             let net_name_offset_unicode = LE::read_u32(&data[20..]) as usize;
             let device_name_offset_unicode = LE::read_u32(&data[24..]) as usize;
             link.net_name_unicode = Some(strings::trim_nul_terminated_string(

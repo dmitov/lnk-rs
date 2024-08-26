@@ -89,5 +89,5 @@ fn test_no_panic_reading_corrupt_lnk() {
 
     let res = ShellLink::open(TEST_CORRUPT_FILE_NAME);
     // Shouldn't have panicked by now!
-    assert!(res.is_err());
+    assert!(res.is_ok());
 }
