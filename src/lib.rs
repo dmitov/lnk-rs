@@ -40,8 +40,8 @@ use std::fs::File;
 #[cfg(feature = "experimental_save")]
 use std::io::BufWriter;
 use std::io::{prelude::*, BufReader};
-#[cfg(feature = "experimental_save")]
 use std::path::Path;
+use std::path::PathBuf;
 
 mod header;
 pub use header::{
@@ -104,6 +104,7 @@ pub struct ShellLink {
     command_line_arguments: Option<String>,
     icon_location: Option<String>,
     _extra_data: Vec<extradata::ExtraData>,
+    network_path: Option<PathBuf>,
 }
 
 impl Default for ShellLink {
@@ -120,6 +121,7 @@ impl Default for ShellLink {
             working_dir: None,
             command_line_arguments: None,
             icon_location: None,
+            network_path: None,
             _extra_data: vec![],
         }
     }
@@ -293,6 +295,13 @@ impl ShellLink {
             link_info = Some(info);
         }
 
+        let network_path = link_info.as_ref().and_then(|li| {
+            match li.common_network_relative_link() {
+                None => None,
+                Some(nl) => Some(PathBuf::from(nl.net_name()).join(li.common_path_suffix()),)
+            }
+        });
+
         let mut name_string = None;
         let mut relative_path = None;
         let mut working_dir = None;
@@ -368,6 +377,7 @@ impl ShellLink {
             command_line_arguments,
             icon_location,
             _extra_data: extra_data,
+            network_path,
         })
     }
 
@@ -421,6 +431,11 @@ impl ShellLink {
     /// Get the shell link's working directory, if set
     pub fn working_dir(&self) -> &Option<String> {
         &self.working_dir
+    }
+
+    /// Get the shell link's network path, if set
+    pub fn network_path(&self) -> Option<&Path> {
+        self.network_path.as_deref()
     }
 
     #[cfg(feature = "experimental_save")]

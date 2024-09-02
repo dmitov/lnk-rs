@@ -88,6 +88,7 @@ pub enum ExtraData {
     SpecialFolderProps(SpecialFolderDataBlock),
     TrackerProps(TrackerDataBlock),
     VistaAndAboveIdListProps(VistaAndAboveIdListDataBlock),
+    Unknown(u32),
 }
 
 impl From<&[u8]> for ExtraData {
@@ -109,7 +110,7 @@ impl From<&[u8]> for ExtraData {
             0xa0000005 => Self::SpecialFolderProps(SpecialFolderDataBlock::from(data)),
             0xa0000003 => Self::TrackerProps(TrackerDataBlock::from(data)),
             0xa000000a => Self::VistaAndAboveIdListProps(VistaAndAboveIdListDataBlock::from(data)),
-            _ => panic!("Invalid extra data type!"),
+            _ => Self::Unknown(sig),
         }
     }
 }

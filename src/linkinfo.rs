@@ -317,6 +317,45 @@ pub struct CommonNetworkRelativeLink {
     device_name_unicode: Option<String>,
 }
 
+impl CommonNetworkRelativeLink {
+    /// Flags that specify the contents of the DeviceNameOffset and
+    /// NetProviderType fields.
+    pub fn flags(&self) -> CommonNetworkRelativeLinkFlags {
+        self.flags
+    }
+    /// A 32-bit, unsigned integer that specifies the type of network
+    /// provider.
+    pub fn network_provider_type(&self) -> Option<&NetworkProviderType> {
+        self.network_provider_type.as_ref()
+    }
+    /// A NULL–terminated string, as defined by the system default code
+    /// page, which specifies a server share path; for example,
+    /// "\\server\share".
+    pub fn net_name(&self) -> &str {
+        &self.net_name
+    }
+    /// A NULL–terminated string, as defined by the system default code
+    /// page, which specifies a device; for example, the drive letter
+    /// "D:".
+    pub fn device_name(&self) -> &str {
+        &self.device_name
+    }
+    /// An optional, NULL–terminated, Unicode string that is the
+    /// Unicode version of the NetName string. This field MUST be
+    /// present if the value of the NetNameOffset field is greater
+    /// than 0x00000014; otherwise, this field MUST NOT be present.
+    pub fn net_name_unicode(&self) -> Option<&str> {
+        self.net_name_unicode.as_deref()
+    }
+    /// An optional, NULL–terminated, Unicode string that is the
+    /// Unicode version of the DeviceName string. This field MUST be
+    /// present if the value of the NetNameOffset field is greater than
+    /// 0x00000014; otherwise, this field MUST NOT be present.
+    pub fn device_name_unicode(&self) -> Option<&str> {
+        self.device_name_unicode.as_deref()
+    }
+}
+
 impl Default for CommonNetworkRelativeLink {
     fn default() -> Self {
         Self {
