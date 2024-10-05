@@ -104,7 +104,7 @@ pub struct ShellLink {
     command_line_arguments: Option<String>,
     icon_location: Option<String>,
     _extra_data: Vec<extradata::ExtraData>,
-    network_path: Option<PathBuf>,
+    pub network_path: Option<PathBuf>,
 }
 
 impl Default for ShellLink {
